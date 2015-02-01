@@ -1,0 +1,62 @@
+---
+- hosts: staging
+
+  # the user to log in as for the server
+  remote_user: developer
+
+  # whether sudo su should be run before commands
+  sudo: yes
+
+  vars:
+
+    # the environment you are setting up
+    # staging/production/uat
+    env: staging
+
+    # the path to the node binary directory
+    nodebindir: '/usr/local/bin'
+
+    # the path to the global node_modules directory
+    nodemodspath: '/usr/local/lib/node_modules'
+
+    # upstart configuration settings
+    minuptime: 5000
+    spinsleeptime: 2000
+    piddir: '/var/run' # where to store pid files
+    logdir: '/var/log' # where to store logs
+
+    # projects to setup upstart scripts for
+    projects:
+      # arbitrary app name, should avoid spaces,
+      # use - or . characters instead
+      - name: 'my-app-name'
+        # path to the actual app directory, probably
+        # something like /home/developer/myapp
+        path: '/full/path/to/app/folder'
+        # the script entry point to the app
+        script: 'index.js'
+
+  tasks:
+
+    # place init scripts on server in init.d folder
+    # after creating them from init template
+    # if you have more than 1 project listed under
+    # projects var, an init script will be created for
+    # each project
+    - name: "create init scripts on server"
+      template: "src=templates/init.d.j2 dest=/etc/init.d/{{ item.name }}.{{ env }} mode=755"
+      with_items: projects
+
+      # let handler know that a new file has been
+      # added to the /etc/init.d folder
+      notify: "update system service definitions"
+
+  handlers:
+
+    # update the systems service definitions. This
+    # needs to be performed whenever you add new files
+    # to the /etc/init.d folder and want these files
+    # to be turned into services.
+    - name: "update system service definitions"
+      command: "update-rc.d {{ item.name }}.{{ env }} defaults"
+      with_items: projects

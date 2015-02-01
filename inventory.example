@@ -1,0 +1,2 @@
+[staging]
+staging     ansible_ssh_host={host to ssh into}   ansible_ssh_user={user to log into host as}
